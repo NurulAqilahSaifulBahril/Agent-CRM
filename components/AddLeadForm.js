@@ -6,7 +6,7 @@ import { X, Check } from "lucide-react";
 import { useCrm } from "@/context/CrmContext";
 import { referralSources } from "@/lib/mockData";
 
-const TYPES = ["Panel", "Inverter", "Battery", "Other"];
+const TYPES = ["Panel", "Inverter", "Battery", "EV", "Other"];
 const OTHER_SOURCE = "__other__";
 
 function newRow() {
@@ -20,6 +20,7 @@ export default function AddLeadForm() {
   const [address, setAddress] = useState("");
   const [source, setSource] = useState(referralSources[0]);
   const [customSource, setCustomSource] = useState("");
+  const [totalPrice, setTotalPrice] = useState("");
   const [rows, setRows] = useState([
     { key: "seed-1", qty: 15, type: "Panel", desc: "650W JinkoSolar TIGER NEO 3.0 N-Type TOPCon" },
     { key: "seed-2", qty: 1, type: "Inverter", desc: "[1P] SAJ H2 6KW Single Phase Hybrid" },
@@ -51,6 +52,7 @@ export default function AddLeadForm() {
       address: address.trim(),
       source: source === OTHER_SOURCE ? customSource.trim() : source,
       package: rows.map(({ qty, type, desc }) => ({ qty: Number(qty) || 1, type, desc })),
+      totalPrice: totalPrice === "" ? undefined : Number(totalPrice),
     });
     setSavedLead(lead);
   }
@@ -196,10 +198,23 @@ export default function AddLeadForm() {
       <button
         type="button"
         onClick={() => setRows((prev) => [...prev, newRow()])}
-        className="mb-4 rounded-md border border-gray-300 px-2.5 py-1 text-xs hover:bg-gray-50"
+        className="mb-3.5 rounded-md border border-gray-300 px-2.5 py-1 text-xs hover:bg-gray-50"
       >
         + Add component
       </button>
+
+      <label className="mb-1 block text-xs text-gray-500" htmlFor="total-price">
+        Total price (RM)
+      </label>
+      <input
+        id="total-price"
+        type="number"
+        min="0"
+        value={totalPrice}
+        onChange={(e) => setTotalPrice(e.target.value)}
+        placeholder="0"
+        className="mb-4 w-full rounded-md border border-gray-300 px-2.5 py-1.5 text-sm focus:border-gray-400 focus:outline-none"
+      />
 
       <div className="flex justify-end gap-2 border-t border-gray-100 pt-3.5">
         <Link

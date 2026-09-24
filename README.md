@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view it.
+Open [http://localhost:3010](http://localhost:3010) to view it. (Port 3000 is avoided because another local app on the dev machine uses it.)
 
 ## Building
 
@@ -19,4 +19,4 @@ Open [http://localhost:3000](http://localhost:3000) to view it.
 npm run build
 ```
 
-This produces a static export in `out/` (configured via `output: "export"` in `next.config.mjs`).
+A normal build (`npm run build`) is a standard Next.js build. The Netlify preview deploy sets `NEXT_EXPORT=true` (see `netlify.toml`) to produce a static export in `out/`; in that mode only the seeded lead pages exist, so newly added leads won't have detail pages.

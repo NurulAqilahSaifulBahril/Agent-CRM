@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { MessageCircle, Check } from "lucide-react";
+import { MessageCircle, Check, ArrowDown, ArrowUp } from "lucide-react";
 import { useCrm } from "@/context/CrmContext";
 import { stageOf, bucketOf, STAGE_STYLES, BUCKET_LABELS } from "@/lib/statusConfig";
 import { toWhatsAppLink } from "@/lib/whatsapp";
+import { formatShortDate } from "@/lib/formatDate";
 
 function WhatsAppButton({ name, phone }) {
   const [sent, setSent] = useState(false);
@@ -31,15 +32,21 @@ export default function LeadTable() {
   const router = useRouter();
   const [activeBucket, setActiveBucket] = useState("all");
   const [search, setSearch] = useState("");
+  const [newestFirst, setNewestFirst] = useState(true);
 
   const counts = { all: leads.length, Active: 0, Won: 0, Lost: 0 };
   leads.forEach((l) => counts[bucketOf(l.status)]++);
 
-  const filtered = leads.filter((l) => {
-    const matchesBucket = activeBucket === "all" || bucketOf(l.status) === activeBucket;
-    const matchesSearch = !search || l.name.toLowerCase().includes(search.toLowerCase());
-    return matchesBucket && matchesSearch;
-  });
+  const filtered = leads
+    .filter((l) => {
+      const matchesBucket = activeBucket === "all" || bucketOf(l.status) === activeBucket;
+      const matchesSearch = !search || l.name.toLowerCase().includes(search.toLowerCase());
+      return matchesBucket && matchesSearch;
+    })
+    .sort((a, b) => {
+      const diff = new Date(b.createdAt) - new Date(a.createdAt);
+      return newestFirst ? diff : -diff;
+    });
 
   return (
     <div>
@@ -71,16 +78,30 @@ export default function LeadTable() {
       <div className="overflow-x-auto">
         <table className="w-full table-fixed border-collapse text-xs">
           <colgroup>
-            <col className="w-[36%]" />
-            <col className="w-[26%]" />
-            <col className="w-[24%]" />
-            <col className="w-[14%]" />
+            <col className="w-[27%]" />
+            <col className="w-[22%]" />
+            <col className="w-[23%]" />
+            <col className="w-[15%]" />
+            <col className="w-[13%]" />
           </colgroup>
           <thead>
             <tr className="border-b border-gray-200 text-gray-500">
               <th className="px-1 py-1.5 text-left font-medium">Lead</th>
               <th className="px-1 py-1.5 text-left font-medium">Source</th>
               <th className="px-1 py-1.5 text-left font-medium">Status</th>
+              <th
+                className="px-1 py-1.5 text-left font-medium"
+                aria-sort={newestFirst ? "descending" : "ascending"}
+              >
+                <button
+                  onClick={() => setNewestFirst((v) => !v)}
+                  title={newestFirst ? "Newest first — click for oldest first" : "Oldest first — click for newest first"}
+                  className="inline-flex items-center gap-1 font-medium text-gray-700 hover:text-gray-900"
+                >
+                  Created
+                  {newestFirst ? <ArrowDown size={12} /> : <ArrowUp size={12} />}
+                </button>
+              </th>
               <th className="px-1 py-1.5 text-left font-medium">Action</th>
             </tr>
           </thead>
@@ -93,7 +114,7 @@ export default function LeadTable() {
               >
                 <td className="px-1 py-1.5">
                   <p className="font-medium text-gray-900">{lead.name}</p>
-                  <p className="text-[11px] text-gray-400">{lead.lastActivity}</p>
+                  <p className="text-[11px] text-gray-400">Last activity: {lead.lastActivity}</p>
                 </td>
                 <td className="px-1 py-1.5 text-gray-600">{lead.source}</td>
                 <td className="px-1 py-1.5">
@@ -105,6 +126,7 @@ export default function LeadTable() {
                     {lead.status}
                   </span>
                 </td>
+                <td className="px-1 py-1.5 text-gray-600">{formatShortDate(lead.createdAt)}</td>
                 <td className="px-1 py-1.5">
                   <WhatsAppButton name={lead.name} phone={lead.phone} />
                 </td>

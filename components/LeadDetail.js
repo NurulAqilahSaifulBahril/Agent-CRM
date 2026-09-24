@@ -11,6 +11,7 @@ import {
   Sun,
   Zap,
   Battery,
+  PlugZap,
   Package,
   Flag,
   UserPlus,
@@ -20,10 +21,17 @@ import { STAGE_GROUPS, STAGE_STYLES, stageOf } from "@/lib/statusConfig";
 import { toWhatsAppLink } from "@/lib/whatsapp";
 
 const ACTIVITY_ICONS = { UserPlus, Flag, MessageCircle };
-const PACKAGE_ICONS = { Panel: Sun, Inverter: Zap, Battery, Other: Package };
+const PACKAGE_ICONS = { Panel: Sun, Inverter: Zap, Battery, EV: PlugZap, Other: Package };
 
 export default function LeadDetail({ leadId }) {
-  const { leads, updateLeadStatus, markFollowedUp, updateLeadRemark } = useCrm();
+  const {
+    leads,
+    updateLeadStatus,
+    markFollowedUp,
+    updateLeadRemark,
+    updateLeadTotalPrice,
+    updateLeadPaymentReceived,
+  } = useCrm();
   const lead = leads.find((l) => l.id === leadId);
   const [stage, setStage] = useState("idle");
 
@@ -37,6 +45,11 @@ export default function LeadDetail({ leadId }) {
       </div>
     );
   }
+
+  const totalPrice = Number(lead.totalPrice) || 0;
+  const paymentReceived = Number(lead.paymentReceived) || 0;
+  const paymentPercent =
+    totalPrice > 0 ? Math.round((paymentReceived / totalPrice) * 100) : null;
 
   function handleOpenWhatsApp() {
     window.open(toWhatsAppLink(lead.phone), "_blank", "noopener,noreferrer");
@@ -173,6 +186,48 @@ export default function LeadDetail({ leadId }) {
             );
           })
         )}
+      </div>
+
+      <div className="mb-3.5 border-t border-gray-100 pt-3">
+        <p className="mb-1.5 text-xs text-gray-500">Payment</p>
+        <div className="mb-2 flex gap-2">
+          <div className="flex-1">
+            <label className="mb-1 block text-xs text-gray-500" htmlFor="total-price">
+              Total price (RM)
+            </label>
+            <input
+              id="total-price"
+              type="number"
+              min="0"
+              defaultValue={lead.totalPrice ?? ""}
+              onBlur={(e) => updateLeadTotalPrice(lead.id, Number(e.target.value) || 0)}
+              placeholder="0"
+              className="w-full rounded-md border border-gray-300 px-2.5 py-1.5 text-sm focus:border-gray-400 focus:outline-none"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="mb-1 block text-xs text-gray-500" htmlFor="payment-received">
+              Payment (RM)
+            </label>
+            <input
+              id="payment-received"
+              type="number"
+              min="0"
+              defaultValue={lead.paymentReceived ?? ""}
+              onBlur={(e) =>
+                updateLeadPaymentReceived(lead.id, Number(e.target.value) || 0)
+              }
+              placeholder="0"
+              className="w-full rounded-md border border-gray-300 px-2.5 py-1.5 text-sm focus:border-gray-400 focus:outline-none"
+            />
+          </div>
+        </div>
+        <div className="flex items-center justify-between rounded-md bg-gray-50 px-2.5 py-1.5">
+          <span className="text-xs text-gray-500">Payment (%)</span>
+          <span className="text-sm font-medium">
+            {paymentPercent === null ? "—" : `${paymentPercent}%`}
+          </span>
+        </div>
       </div>
 
       <div className="border-t border-gray-100 pt-3">

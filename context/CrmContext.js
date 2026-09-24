@@ -50,6 +50,18 @@ export function CrmProvider({ children }) {
     );
   }
 
+  function updateLeadTotalPrice(leadId, totalPrice) {
+    setLeads((prev) =>
+      prev.map((lead) => (lead.id === leadId ? { ...lead, totalPrice } : lead))
+    );
+  }
+
+  function updateLeadPaymentReceived(leadId, paymentReceived) {
+    setLeads((prev) =>
+      prev.map((lead) => (lead.id === leadId ? { ...lead, paymentReceived } : lead))
+    );
+  }
+
   function dismissNotification(type, id) {
     if (type === "urgent") {
       setUrgent((prev) => prev.filter((n) => n.id !== id));
@@ -72,8 +84,10 @@ export function CrmProvider({ children }) {
       address: data.address,
       source: data.source,
       status: "New Lead",
+      createdAt: new Date().toISOString(),
       lastActivity: "just now",
       package: data.package,
+      totalPrice: data.totalPrice,
       activity: [
         { icon: "UserPlus", text: `Lead created via ${data.source}`, when: "just now" },
       ],
@@ -90,6 +104,8 @@ export function CrmProvider({ children }) {
     updateLeadStatus,
     markFollowedUp,
     updateLeadRemark,
+    updateLeadTotalPrice,
+    updateLeadPaymentReceived,
     dismissNotification,
     clearAllNotifications,
     addLead,
