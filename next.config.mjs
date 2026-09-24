@@ -1,8 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Static export is only for the Netlify preview build (see netlify.toml).
-  // Local dev and the Electron/Postgres app need dynamic lead routes.
-  ...(process.env.NEXT_EXPORT === "true" ? { output: "export" } : {}),
+  // Netlify sets NEXT_EXPORT for a static preview. Railway and local production
+  // use a standalone server so dynamic lead routes keep working.
+  output: process.env.NEXT_EXPORT === "true" ? "export" : "standalone",
 };
 
 export default nextConfig;

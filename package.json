@@ -5,8 +5,12 @@
   "scripts": {
     "dev": "next dev -p 3010",
     "build": "next build",
-    "start": "next start",
+    "postbuild": "node scripts/copy-standalone-assets.js",
+    "start": "node scripts/start.js",
     "lint": "eslint"
+  },
+  "engines": {
+    "node": ">=20.9.0"
   },
   "dependencies": {
     "lucide-react": "^1.46.0",
