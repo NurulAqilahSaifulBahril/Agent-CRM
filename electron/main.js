@@ -2,12 +2,15 @@
 // Agent and lead data is saved in the user's app-data folder, not in the install folder.
 
 const { app, BrowserWindow, dialog, shell } = require("electron");
+const { autoUpdater } = require("electron-updater");
 const { spawn } = require("node:child_process");
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const http = require("node:http");
 const net = require("node:net");
 const path = require("node:path");
+
+const UPDATE_CHECK_EVERY_MS = 4 * 60 * 60 * 1000;
 
 // A steady port keeps the sign-in cookie across launches; fall back if it's taken.
 const PREFERRED_PORT = 3210;
@@ -128,6 +131,30 @@ function createWindow(port) {
   mainWindow.loadURL(origin);
 }
 
+// Looks for a newer release on GitHub, downloads it quietly, then offers a restart.
+// Only the app's code is replaced: agents and leads stay in the app-data folder.
+function watchForUpdates() {
+  if (!app.isPackaged) return;
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.on("error", (err) => console.error("Update check failed:", err));
+  autoUpdater.on("update-downloaded", async (info) => {
+    const { response } = await dialog.showMessageBox(mainWindow, {
+      type: "info",
+      buttons: ["Restart now", "Later"],
+      defaultId: 0,
+      cancelId: 1,
+      title: "Update ready",
+      message: `Agent CRM ${info.version} is ready to install.`,
+      detail: "Your leads are kept. If you choose Later, it installs when you close the app.",
+    });
+    if (response === 0) autoUpdater.quitAndInstall(true, true);
+  });
+  const check = () => autoUpdater.checkForUpdates().catch(() => {});
+  check();
+  setInterval(check, UPDATE_CHECK_EVERY_MS);
+}
+
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
@@ -141,6 +168,7 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(async () => {
     try {
       createWindow(await startServer());
+      watchForUpdates();
     } catch (err) {
       dialog.showErrorBox("Agent CRM couldn't start", String(err.message || err));
       app.quit();
