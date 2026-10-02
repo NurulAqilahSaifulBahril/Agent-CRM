@@ -42,3 +42,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local data (customer details, never commit)
+/data/
+
+# electron-builder output
+/dist/

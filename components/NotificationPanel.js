@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { useCrm } from "@/context/CrmContext";
+import { formatAppointment } from "@/lib/followUps";
 
 function NotificationGroup({ label, labelClass, items, onDismiss, onOpen }) {
   return (
@@ -80,6 +81,9 @@ export default function NotificationPanel() {
 
       <div>
         <p className="mb-1.5 text-[11px] font-medium text-blue-600">Site visits</p>
+        {siteVisits.length === 0 && (
+          <p className="text-[11px] text-gray-400">No visits scheduled</p>
+        )}
         <div className="flex flex-col gap-1.5">
           {siteVisits.map((v) => (
             <div
@@ -90,7 +94,9 @@ export default function NotificationPanel() {
               className="cursor-pointer rounded-lg border border-gray-200 bg-white p-1.5 hover:bg-gray-50"
             >
               <p className="truncate text-xs font-medium text-gray-900">{v.name}</p>
-              <p className="text-[11px] text-gray-500">{v.when}</p>
+              <p suppressHydrationWarning className="text-[11px] text-gray-500">
+                {formatAppointment(v.at)} &middot; {v.wait}
+              </p>
             </div>
           ))}
         </div>

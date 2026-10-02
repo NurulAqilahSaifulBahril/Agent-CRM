@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { X, Check } from "lucide-react";
 import { useCrm } from "@/context/CrmContext";
-import { referralSources } from "@/lib/mockData";
+import { referralSources } from "@/lib/referralSources";
 
 const TYPES = ["Panel", "Inverter", "Battery", "EV", "Other"];
 const OTHER_SOURCE = "__other__";
@@ -27,6 +27,7 @@ export default function AddLeadForm() {
   ]);
   const [errors, setErrors] = useState({});
   const [savedLead, setSavedLead] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   function updateRow(key, patch) {
     setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
@@ -36,7 +37,7 @@ export default function AddLeadForm() {
     setRows((prev) => prev.filter((r) => r.key !== key));
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     const nextErrors = {};
     if (!name.trim()) nextErrors.name = "Enter a name";
@@ -46,15 +47,23 @@ export default function AddLeadForm() {
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
-    const lead = addLead({
-      name: name.trim(),
-      phone: phone.trim(),
-      address: address.trim(),
-      source: source === OTHER_SOURCE ? customSource.trim() : source,
-      package: rows.map(({ qty, type, desc }) => ({ qty: Number(qty) || 1, type, desc })),
-      totalPrice: totalPrice === "" ? undefined : Number(totalPrice),
-    });
-    setSavedLead(lead);
+    setSaving(true);
+    try {
+      const lead = await addLead({
+        name: name.trim(),
+        phone: phone.trim(),
+        address: address.trim(),
+        source: source === OTHER_SOURCE ? customSource.trim() : source,
+        package: rows.map(({ qty, type, desc }) => ({ qty: Number(qty) || 1, type, desc })),
+        totalPrice: totalPrice === "" ? undefined : Number(totalPrice),
+      });
+      setSavedLead(lead);
+    } catch (err) {
+      console.error(err);
+      setErrors({ form: "Couldn't save the lead. Try again." });
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (savedLead) {
@@ -216,6 +225,7 @@ export default function AddLeadForm() {
         className="mb-4 w-full rounded-md border border-gray-300 px-2.5 py-1.5 text-sm focus:border-gray-400 focus:outline-none"
       />
 
+      {errors.form && <p className="mb-2 text-xs text-red-600">{errors.form}</p>}
       <div className="flex justify-end gap-2 border-t border-gray-100 pt-3.5">
         <Link
           href="/dashboard"
@@ -225,9 +235,10 @@ export default function AddLeadForm() {
         </Link>
         <button
           type="submit"
-          className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+          disabled={saving}
+          className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-60"
         >
-          Save lead
+          {saving ? "Saving…" : "Save lead"}
         </button>
       </div>
     </form>

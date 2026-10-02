@@ -1,114 +1,152 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import {
-  initialLeads,
-  initialUrgent,
-  initialReminder,
-  siteVisits,
-} from "@/lib/mockData";
+  addLeadAction,
+  deleteLeadAction,
+  logFollowUpAction,
+  updateLeadAction,
+} from "@/app/actions";
+import { buildNotifications } from "@/lib/followUps";
 
 const CrmContext = createContext(null);
 
-export function CrmProvider({ children }) {
+// Leads and notifications arrive from the server. Edits show straight away and
+// are saved to the server; its saved copy of the lead replaces the local one.
+export function CrmProvider({ user, initialLeads, initialNow, children }) {
   const [leads, setLeads] = useState(initialLeads);
-  const [urgent, setUrgent] = useState(initialUrgent);
-  const [reminder, setReminder] = useState(initialReminder);
+  // Starts at the server's time so the first render matches, then ticks each minute.
+  const [now, setNow] = useState(initialNow);
+  const [dismissed, setDismissed] = useState([]);
 
-  function addLeadActivity(leadId, entry) {
-    setLeads((prev) =>
-      prev.map((lead) =>
-        lead.id === leadId
-          ? { ...lead, activity: [entry, ...(lead.activity || [])] }
-          : lead
-      )
-    );
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Alerts follow each lead's status, so changing a status changes its alert.
+  const notifications = useMemo(() => buildNotifications(leads, now), [leads, now]);
+  const visible = (items) => items.filter((n) => !dismissed.includes(n.id));
+  const urgent = visible(notifications.urgent);
+  const reminder = visible(notifications.reminder);
+  const siteVisits = visible(notifications.siteVisits);
+
+  function replaceLead(saved) {
+    if (saved) setLeads((prev) => prev.map((lead) => (lead.id === saved.id ? saved : lead)));
+  }
+
+  // Apply a change locally, then save it; put the old list back if saving fails.
+  async function saveLead(leadId, localChange, save) {
+    const before = leads;
+    setLeads((prev) => prev.map((lead) => (lead.id === leadId ? localChange(lead) : lead)));
+    try {
+      replaceLead(await save());
+    } catch (err) {
+      console.error(err);
+      setLeads(before);
+    }
   }
 
   function updateLeadStatus(leadId, status) {
-    setLeads((prev) =>
-      prev.map((lead) => (lead.id === leadId ? { ...lead, status } : lead))
+    return saveLead(
+      leadId,
+      (lead) => ({ ...lead, status, statusChangedAt: new Date().toISOString() }),
+      () => updateLeadAction(leadId, { status })
     );
-    addLeadActivity(leadId, {
-      icon: "Flag",
-      text: `Status changed to ${status}`,
-      when: "just now",
-    });
   }
 
   function markFollowedUp(leadId) {
-    addLeadActivity(leadId, {
-      icon: "MessageCircle",
-      text: "Marked as followed up via WhatsApp",
-      when: "just now",
-    });
+    return saveLead(
+      leadId,
+      (lead) => ({
+        ...lead,
+        activity: [
+          { icon: "MessageCircle", text: "Marked as followed up via WhatsApp", when: "just now" },
+          ...(lead.activity || []),
+        ],
+      }),
+      () => logFollowUpAction(leadId)
+    );
+  }
+
+  // Picking "Appointment Scheduled" saves the status and the visit time together.
+  function scheduleAppointment(leadId, appointmentAt) {
+    return saveLead(
+      leadId,
+      (lead) => ({
+        ...lead,
+        status: "Appointment Scheduled",
+        appointmentAt,
+        statusChangedAt: new Date().toISOString(),
+      }),
+      () => updateLeadAction(leadId, { status: "Appointment Scheduled", appointmentAt })
+    );
   }
 
   function updateLeadRemark(leadId, remark) {
-    setLeads((prev) =>
-      prev.map((lead) => (lead.id === leadId ? { ...lead, remark } : lead))
+    return saveLead(
+      leadId,
+      (lead) => ({ ...lead, remark }),
+      () => updateLeadAction(leadId, { remark })
     );
   }
 
   function updateLeadTotalPrice(leadId, totalPrice) {
-    setLeads((prev) =>
-      prev.map((lead) => (lead.id === leadId ? { ...lead, totalPrice } : lead))
+    return saveLead(
+      leadId,
+      (lead) => ({ ...lead, totalPrice }),
+      () => updateLeadAction(leadId, { totalPrice })
     );
   }
 
   function updateLeadPaymentReceived(leadId, paymentReceived) {
-    setLeads((prev) =>
-      prev.map((lead) => (lead.id === leadId ? { ...lead, paymentReceived } : lead))
+    return saveLead(
+      leadId,
+      (lead) => ({ ...lead, paymentReceived }),
+      () => updateLeadAction(leadId, { paymentReceived })
     );
   }
 
   function dismissNotification(type, id) {
-    if (type === "urgent") {
-      setUrgent((prev) => prev.filter((n) => n.id !== id));
-    } else {
-      setReminder((prev) => prev.filter((n) => n.id !== id));
-    }
+    setDismissed((prev) => [...prev, id]);
   }
 
   function clearAllNotifications() {
-    setUrgent([]);
-    setReminder([]);
+    setDismissed((prev) => [
+      ...prev,
+      ...[...urgent, ...reminder, ...siteVisits].map((n) => n.id),
+    ]);
   }
 
-  function addLead(data) {
-    const nextId = Math.max(0, ...leads.map((l) => l.id)) + 1;
-    const newLead = {
-      id: nextId,
-      name: data.name,
-      phone: data.phone,
-      address: data.address,
-      source: data.source,
-      status: "New Lead",
-      createdAt: new Date().toISOString(),
-      lastActivity: "just now",
-      package: data.package,
-      totalPrice: data.totalPrice,
-      activity: [
-        { icon: "UserPlus", text: `Lead created via ${data.source}`, when: "just now" },
-      ],
-    };
+  async function addLead(data) {
+    const newLead = await addLeadAction(data);
     setLeads((prev) => [newLead, ...prev]);
     return newLead;
   }
 
+  async function deleteLead(leadId) {
+    const deleted = await deleteLeadAction(leadId);
+    if (!deleted) return false;
+    setLeads((prev) => prev.filter((lead) => lead.id !== leadId));
+    return true;
+  }
+
   const value = {
+    user,
     leads,
     urgent,
     reminder,
     siteVisits,
     updateLeadStatus,
     markFollowedUp,
+    scheduleAppointment,
     updateLeadRemark,
     updateLeadTotalPrice,
     updateLeadPaymentReceived,
     dismissNotification,
     clearAllNotifications,
     addLead,
+    deleteLead,
   };
 
   return <CrmContext.Provider value={value}>{children}</CrmContext.Provider>;

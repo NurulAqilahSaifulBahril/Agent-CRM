@@ -7,7 +7,9 @@
     "build": "next build",
     "postbuild": "node scripts/copy-standalone-assets.js",
     "start": "node scripts/start.js",
-    "lint": "eslint"
+    "lint": "eslint",
+    "electron": "electron .",
+    "dist": "npm run build && electron-builder --win --publish never"
   },
   "engines": {
     "node": ">=20.9.0"
@@ -20,8 +22,44 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
     "tailwindcss": "^4"
-  }
+  },
+  "description": "Lead-tracking CRM for solar sales agents",
+  "author": "Eternalgy",
+  "main": "electron/main.js",
+  "build": {
+    "appId": "com.eternalgy.agentcrm",
+    "productName": "Agent CRM",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": ".next/standalone",
+        "to": "standalone",
+        "filter": [
+          "**/*",
+          "!data/**",
+          "!**/.env*"
+        ]
+      }
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "afterPack": "scripts/after-pack.js"
+  },
+  "productName": "Agent CRM"
 }

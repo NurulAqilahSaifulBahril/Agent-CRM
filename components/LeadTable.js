@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { MessageCircle, Check, ArrowDown, ArrowUp } from "lucide-react";
+import { MessageCircle, Check, ArrowDown, ArrowUp, Minus } from "lucide-react";
 import { useCrm } from "@/context/CrmContext";
 import { stageOf, bucketOf, STAGE_STYLES, BUCKET_LABELS } from "@/lib/statusConfig";
 import { toWhatsAppLink } from "@/lib/whatsapp";
@@ -10,6 +10,10 @@ import { formatShortDate } from "@/lib/formatDate";
 
 function WhatsAppButton({ name, phone }) {
   const [sent, setSent] = useState(false);
+
+  if (!phone) {
+    return <span className="px-1 text-[11px] text-gray-400">No phone</span>;
+  }
 
   return (
     <button
@@ -28,11 +32,21 @@ function WhatsAppButton({ name, phone }) {
 }
 
 export default function LeadTable() {
-  const { leads } = useCrm();
+  const { leads, deleteLead } = useCrm();
   const router = useRouter();
   const [activeBucket, setActiveBucket] = useState("all");
   const [search, setSearch] = useState("");
   const [newestFirst, setNewestFirst] = useState(true);
+
+  async function handleDelete(lead) {
+    if (!window.confirm(`Delete the lead for ${lead.name}? This can't be undone.`)) return;
+    try {
+      await deleteLead(lead.id);
+    } catch (err) {
+      console.error(err);
+      window.alert("Couldn't delete the lead. Try again.");
+    }
+  }
 
   const counts = { all: leads.length, Active: 0, Won: 0, Lost: 0 };
   leads.forEach((l) => counts[bucketOf(l.status)]++);
@@ -40,7 +54,11 @@ export default function LeadTable() {
   const filtered = leads
     .filter((l) => {
       const matchesBucket = activeBucket === "all" || bucketOf(l.status) === activeBucket;
-      const matchesSearch = !search || l.name.toLowerCase().includes(search.toLowerCase());
+      const query = search.toLowerCase();
+      const matchesSearch =
+        !search ||
+        l.name.toLowerCase().includes(query) ||
+        (l.invoiceNumber || "").toLowerCase().includes(query);
       return matchesBucket && matchesSearch;
     })
     .sort((a, b) => {
@@ -70,7 +88,7 @@ export default function LeadTable() {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name"
+          placeholder="Search by name or invoice"
           className="min-w-[140px] flex-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-sm focus:border-gray-400 focus:outline-none"
         />
       </div>
@@ -114,7 +132,9 @@ export default function LeadTable() {
               >
                 <td className="px-1 py-1.5">
                   <p className="font-medium text-gray-900">{lead.name}</p>
-                  <p className="text-[11px] text-gray-400">Last activity: {lead.lastActivity}</p>
+                  <p className="text-[11px] text-gray-400">
+                    {lead.invoiceNumber || "No invoice"}
+                  </p>
                 </td>
                 <td className="px-1 py-1.5 text-gray-600">{lead.source}</td>
                 <td className="px-1 py-1.5">
@@ -128,7 +148,22 @@ export default function LeadTable() {
                 </td>
                 <td className="px-1 py-1.5 text-gray-600">{formatShortDate(lead.createdAt)}</td>
                 <td className="px-1 py-1.5">
-                  <WhatsAppButton name={lead.name} phone={lead.phone} />
+                  <div className="flex items-center gap-0.5">
+                    <WhatsAppButton name={lead.name} phone={lead.phone} />
+                    {lead.deletable && (
+                      <button
+                        aria-label={`Delete lead for ${lead.name}`}
+                        title="Delete lead"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(lead);
+                        }}
+                        className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                      >
+                        <Minus size={14} />
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
