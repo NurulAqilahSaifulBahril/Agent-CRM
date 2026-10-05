@@ -30,7 +30,7 @@ npm run dist      # builds the app and writes dist/Agent-CRM-Setup-<version>.exe
 npm run electron  # runs the desktop shell against the last build (after npm run build)
 ```
 
-Data lives in `%APPDATA%\Agent CRM\data\crm.json` and the session secret is created on first launch, so reinstalling or updating keeps your leads. To add an agent to an installed app:
+Data lives in `%APPDATA%\Agent CRM\data\crm.json` and the session secret is created on first launch, so reinstalling or updating keeps your leads. While there are no agents, the sign-in page shows a setup form that adds the first one. To add more agents to an installed app:
 
 ```bash
 set CRM_DATA_FILE=%APPDATA%\Agent CRM\data\crm.json

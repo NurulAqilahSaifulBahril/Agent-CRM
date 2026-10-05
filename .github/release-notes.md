@@ -18,9 +18,9 @@ installing, signing in and updating, step by step.
 
 ### Signing in
 
-Sign in with the phone number IT registered for you — the installer does not
-ask you to create an account. A new install has no agents on it, so ask IT
-to add your number before you sign in for the first time.
+The first time Agent CRM opens on a PC it shows **Set up Agent CRM**: type
+your name and phone number, then click **Add agent and sign in**. After that,
+sign in with that phone number — there is no password.
 
 ### Your leads
 

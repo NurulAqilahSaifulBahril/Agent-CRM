@@ -464,11 +464,11 @@ g.para("Open the file. **Windows may stop it the first time** because the "
 g.smartscreen_row("Left: click More info. Right: then Run anyway.")
 
 g.heading("3 · Open & sign in")
-g.para("Open **Agent CRM** from the Start Menu or the desktop shortcut. Type "
-       "the **phone number IT registered for you** and click **Sign in** — "
-       "there is no password and no account to create. A new install has no "
-       "agents on it, so **ask IT to add your number first**. **You're "
-       "done** — steps 1–3 are one time only.")
+g.para("Open **Agent CRM** from the Start Menu or the desktop shortcut. The "
+       "first time, it shows **Set up Agent CRM**: type your **name and phone "
+       "number** and click **Add agent and sign in**. After that, sign in with "
+       "that phone number — there is no password. **You're done** — steps "
+       "1–3 are one time only.")
 
 g.heading("Your leads")
 g.para("Leads are saved on this PC in `%APPDATA%\\Agent CRM\\data`, not in "

@@ -1,6 +1,7 @@
 "use server";
 
 import {
+  addFirstAgent,
   createLead,
   deleteLead,
   findUserById,
@@ -33,6 +34,21 @@ export async function signIn(phone) {
   const user = await findUserByPhone(phone);
   if (!user) return { ok: false, error: "No agent account uses this number" };
   await createSession(user.id);
+  return { ok: true };
+}
+
+// Sets up a new install: adds the first agent and signs them in.
+export async function setUpFirstAgent(name, phone) {
+  const cleanName = String(name || "").trim();
+  const cleanPhone = String(phone || "").trim();
+  const digits = cleanPhone.replace(/\D/g, "");
+  if (!cleanName) return { ok: false, error: "Enter the agent's name" };
+  if (digits.length < 9 || digits.length > 12) {
+    return { ok: false, error: "Enter a valid phone number" };
+  }
+  const agent = await addFirstAgent(cleanName, cleanPhone);
+  if (!agent) return { ok: false, error: "This PC is already set up. Reload to sign in." };
+  await createSession(agent.id);
   return { ok: true };
 }
 
