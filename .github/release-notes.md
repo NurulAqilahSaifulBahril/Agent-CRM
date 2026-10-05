@@ -13,6 +13,9 @@
 
 The first start takes a few seconds while the app starts its server.
 
+**New here?** Read `Agent-CRM-User-Guide.pdf` below — it walks through
+installing, signing in and updating, step by step.
+
 ### Signing in
 
 Sign in with the phone number IT registered for you — the installer does not

@@ -5,8 +5,8 @@ name: Release
 #   git tag v0.2.1 && git push origin v0.2.1
 #
 # Builds the Windows installer and publishes it with the files the desktop
-# app's auto-updater reads (latest.yml and the .blockmap) plus SHA256SUMS.txt.
-# The release notes come from .github/release-notes.md.
+# app's auto-updater reads (latest.yml and the .blockmap), the user guide PDF
+# and SHA256SUMS.txt. The release notes come from .github/release-notes.md.
 
 on:
   push:
@@ -57,10 +57,21 @@ jobs:
           grep -qx "version: $VERSION" dist/latest.yml || { echo "latest.yml is not for $VERSION"; cat dist/latest.yml; exit 1; }
           echo "Installer: $exe ($(( $(stat -c%s "$exe") / 1048576 )) MB)"
 
+      # Rebuilt for every tag rather than committed, so the guide always names
+      # the installer it ships beside. The runner has the Segoe UI fonts it uses.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build the user guide
+        run: |
+          pip install reportlab
+          python scripts/build_user_guide_pdf.py
+
       - name: Generate checksums
         working-directory: dist
         run: |
-          sha256sum "Agent-CRM-Setup-$VERSION.exe" "Agent-CRM-Setup-$VERSION.exe.blockmap" latest.yml > SHA256SUMS.txt
+          sha256sum "Agent-CRM-Setup-$VERSION.exe" "Agent-CRM-Setup-$VERSION.exe.blockmap" \
+            latest.yml Agent-CRM-User-Guide.pdf > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
       # Opened as a draft and published only once every file is attached: an
@@ -76,5 +87,6 @@ jobs:
             "dist/Agent-CRM-Setup-$VERSION.exe" \
             "dist/Agent-CRM-Setup-$VERSION.exe.blockmap" \
             dist/latest.yml \
+            dist/Agent-CRM-User-Guide.pdf \
             dist/SHA256SUMS.txt
           gh release edit "$tag" --draft=false --latest
