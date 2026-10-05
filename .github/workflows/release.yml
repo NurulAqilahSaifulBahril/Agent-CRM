@@ -1,0 +1,80 @@
+name: Release
+
+# Push a version tag to cut a release:
+#   npm version 0.2.1 --no-git-tag-version   (commit package.json and the lockfile)
+#   git tag v0.2.1 && git push origin v0.2.1
+#
+# Builds the Windows installer and publishes it with the files the desktop
+# app's auto-updater reads (latest.yml and the .blockmap) plus SHA256SUMS.txt.
+# The release notes come from .github/release-notes.md.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      # electron-builder names the installer and writes latest.yml from
+      # package.json, so a tag that disagrees with it would publish an update
+      # that installed apps can't match to a version.
+      - name: Check the tag matches package.json
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg=$(node -p "require('./package.json').version")
+          if [ "$tag" != "$pkg" ]; then
+            echo "Tag v$tag does not match package.json version $pkg."
+            exit 1
+          fi
+          echo "VERSION=$pkg" >> "$GITHUB_ENV"
+
+      - run: npm ci
+      - run: npm run dist
+
+      # An installer without the bundled server still builds and installs, then
+      # shows nothing but an error on launch. Check for it before publishing.
+      - name: Verify the installer carries the app server
+        run: |
+          exe="dist/Agent-CRM-Setup-$VERSION.exe"
+          server="dist/win-unpacked/resources/standalone"
+          [ -f "$exe" ] || { echo "No installer at $exe"; ls -la dist; exit 1; }
+          [ -f "$server/server.js" ] || { echo "No server.js in the packaged app"; exit 1; }
+          [ -d "$server/node_modules/next" ] || { echo "No server dependencies in the packaged app"; exit 1; }
+          grep -qx "version: $VERSION" dist/latest.yml || { echo "latest.yml is not for $VERSION"; cat dist/latest.yml; exit 1; }
+          echo "Installer: $exe ($(( $(stat -c%s "$exe") / 1048576 )) MB)"
+
+      - name: Generate checksums
+        working-directory: dist
+        run: |
+          sha256sum "Agent-CRM-Setup-$VERSION.exe" "Agent-CRM-Setup-$VERSION.exe.blockmap" latest.yml > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      # Opened as a draft and published only once every file is attached: an
+      # installed app that checks in between would otherwise find a release
+      # with no latest.yml. To rerun after a failure, delete the draft first.
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v$VERSION"
+          sed "s/{{VERSION}}/$VERSION/g" .github/release-notes.md > notes.md
+          gh release create "$tag" --title "$tag" --notes-file notes.md --draft \
+            "dist/Agent-CRM-Setup-$VERSION.exe" \
+            "dist/Agent-CRM-Setup-$VERSION.exe.blockmap" \
+            dist/latest.yml \
+            dist/SHA256SUMS.txt
+          gh release edit "$tag" --draft=false --latest
